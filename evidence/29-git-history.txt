@@ -1,0 +1,23 @@
+$ git log --oneline
+d66b6e0 audit: final check outputs; probe R-01 models wall clock and monotonic clock separately
+abc9782 docs(readme): Node version, npm ci, dev-profile warning, link to AGENTS.md (C10)
+a96b142 audit: negative check for R-02 mitigation
+01a4fa5 audit: negative checks for both mitigations
+6bfbf1c fix(protection): require the 10-minute delay on a monotonic clock too, so moving the Windows clock forward cannot skip it (R-01)
+32f2b98 fix(protection): count password attempt before scrypt so parallel IPC guesses cannot bypass the lockout (review finding on R-02 fix)
+30dfce1 fix(protection): lock password input for 5 min after 5 wrong attempts (R-02)
+3f3ad36 refactor(protection): Strategy table for numeric settings (one tighten/loosen rule instead of three copies)
+9e09110 audit: verify AI risk review findings; isolate audit probes from npm test (C9)
+526c39b docs: add AGENTS.md with safe/forbidden actions and review gates; import it from CLAUDE.md
+88dc73a audit: baseline check outputs and risk probes
+866db12 baseline: Gamekeeper v1.1.0 source export (no secrets, no build output)
+
+$ git diff --stat baseline..HEAD -- . ":(exclude)evidence"
+ AGENTS.md                        | 100 ++++++++++++++++++++++++++
+ CLAUDE.md                        |   2 +
+ README.md                        |   9 ++-
+ src/main/core/protection.test.ts |  99 +++++++++++++++++++++++++-
+ src/main/core/protection.ts      | 149 +++++++++++++++++++++++++++++++--------
+ src/renderer/src/lib/labels.ts   |   1 +
+ src/shared/protection.ts         |   2 +
+ 7 files changed, 330 insertions(+), 32 deletions(-)
