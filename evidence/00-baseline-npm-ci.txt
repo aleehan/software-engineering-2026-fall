@@ -1,0 +1,7 @@
+$ npm ci   (clean copy of tag baseline, Linux x64, Node 22.23.5)
+npm error path <clean-copy>/node_modules/better-sqlite3
+npm error command failed
+npm error gyp http GET https://nodejs.org/download/release/v22.23.5/node-v22.23.5-headers.tar.gz
+npm error gyp ERR! configure error 
+npm error gyp ERR! stack Error: Request was cancelled.
+EXIT=1
