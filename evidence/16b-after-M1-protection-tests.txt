@@ -1,4 +1,4 @@
-$ (worktree at 32f2b98, after M1) npm test -- src/main/core/protection.test.ts
+$ (worktree at de52e94, after M1) npm test -- src/main/core/protection.test.ts
  Test Files  1 passed (1)
       Tests  24 passed (24)
 EXIT=0
