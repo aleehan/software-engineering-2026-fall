@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { join } from 'path'
 import { getSettings, openDatabase, type DatabaseHandle } from './db'
-import { ProtectionService } from './protection'
+import { MAX_FAILED_PASSWORD_ATTEMPTS, PASSWORD_LOCKOUT_MS, ProtectionService } from './protection'
 
 // База в памяти (':memory:') с настоящими миграциями — быстро и без следов на диске.
 let handle: DatabaseHandle
@@ -215,5 +215,47 @@ describe('ProtectionService без пароля', () => {
       error: 'password-too-short'
     })
     fresh.close()
+  })
+})
+
+describe('Ограничение попыток пароля (риск R-02)', () => {
+  it('после 5 неверных паролей подряд ввод блокируется, даже верный пароль не принимается', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) {
+      expect(await service.requestUnlock('nope')).toEqual({ ok: false, error: 'wrong-password' })
+    }
+    expect(await service.requestUnlock('secret')).toEqual({
+      ok: false,
+      error: 'too-many-attempts'
+    })
+    expect(await service.setMatchLimit(5, 'secret')).toEqual({
+      ok: false,
+      error: 'too-many-attempts'
+    })
+    expect(service.listPending()).toHaveLength(0)
+  })
+
+  it('после окончания блокировки верный пароль снова работает', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
+    advance(PASSWORD_LOCKOUT_MS - 1)
+    expect(await service.requestUnlock('secret')).toMatchObject({ error: 'too-many-attempts' })
+    advance(1)
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true, applied: 'pending' })
+  })
+
+  it('верный пароль сбрасывает счётчик неверных попыток', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
+  })
+
+  it('запрос без пароля не считается попыткой угадать', async () => {
+    for (let i = 0; i < 10; i++) await service.setMatchLimit(5)
+    expect(await service.setMatchLimit(5, 'secret')).toMatchObject({ ok: true, applied: 'pending' })
+  })
+
+  it('ужесточение во время блокировки ввода работает без пароля', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
+    expect(await service.setMatchLimit(1)).toEqual({ ok: true, applied: 'now' })
   })
 })

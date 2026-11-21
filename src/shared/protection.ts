@@ -11,6 +11,8 @@ export type ProtectionError =
   | 'password-not-set'
   | 'password-already-set'
   | 'wrong-password'
+  // Слишком много неверных паролей подряд — ввод временно заблокирован.
+  | 'too-many-attempts'
   | 'password-too-short'
   | 'invalid-value'
   | 'unchanged'

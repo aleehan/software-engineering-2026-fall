@@ -71,7 +71,17 @@ export interface ProtectionOptions {
   delayMs?: number
   /** Источник времени. В тестах подменяем, чтобы «перематывать» часы. */
   now?: () => Date
+  /**
+   * Монотонные часы в миллисекундах (не зависят от системного времени Windows).
+   * По умолчанию performance.now(); если в тестах подменён только `now`, берём время из него.
+   */
+  monotonicNow?: () => number
 }
+
+/** Сколько неверных паролей подряд допускается до временной блокировки ввода. */
+export const MAX_FAILED_PASSWORD_ATTEMPTS = 5
+/** На сколько блокируется проверка пароля после серии неверных попыток. */
+export const PASSWORD_LOCKOUT_MS = 5 * 60 * 1000
 
 // Маленький помощник: короче писать return fail('wrong-password').
 const fail = (error: ProtectionError): ActionResult => ({ ok: false, error })
@@ -86,11 +96,19 @@ export class ProtectionService {
   private readonly db: Db
   private readonly delayMs: number
   private readonly now: () => Date
+  private readonly monotonicNow: () => number
+  /** Неверных паролей подряд (сбрасывается верным паролем). Хранится в памяти процесса. */
+  private failedAttempts = 0
+  /** До какого момента монотонных часов проверка пароля заблокирована. */
+  private lockedUntil = 0
 
   constructor(options: ProtectionOptions) {
     this.db = options.db
     this.delayMs = options.delayMs ?? LOOSENING_DELAY_MS
-    this.now = options.now ?? (() => new Date())
+    const now = options.now ?? (() => new Date())
+    this.now = now
+    this.monotonicNow =
+      options.monotonicNow ?? (options.now ? () => now().getTime() : () => performance.now())
   }
 
   hasPassword(): boolean {
@@ -260,7 +278,19 @@ export class ProtectionService {
   private async checkPassword(password: string | undefined): Promise<ActionResult | null> {
     const hash = getSettings(this.db).passwordHash
     if (hash === null) return fail('password-not-set')
-    if (!password || !(await verifyPassword(password, hash))) return fail('wrong-password')
+    // Пока действует блокировка, пароль даже не проверяем — перебор не продвигается.
+    if (this.monotonicNow() < this.lockedUntil) return fail('too-many-attempts')
+    // Пустой пароль — не попытка угадать, счётчик не трогаем.
+    if (!password) return fail('wrong-password')
+    if (!(await verifyPassword(password, hash))) {
+      this.failedAttempts++
+      if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
+        this.failedAttempts = 0
+        this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
+      }
+      return fail('wrong-password')
+    }
+    this.failedAttempts = 0
     return null
   }
 }

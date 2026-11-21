@@ -14,6 +14,7 @@ export const ERROR_TEXT: Record<ProtectionError, string> = {
   'password-not-set': 'Сначала задай пароль',
   'password-already-set': 'Пароль уже задан',
   'wrong-password': 'Неверный пароль',
+  'too-many-attempts': 'Слишком много неверных попыток. Ввод пароля заблокирован на 5 минут',
   'password-too-short': 'Пароль слишком короткий, нужно минимум 4 символа',
   'invalid-value': 'Недопустимое значение',
   unchanged: 'Значение не изменилось',
