@@ -282,15 +282,17 @@ export class ProtectionService {
     if (this.monotonicNow() < this.lockedUntil) return fail('too-many-attempts')
     // Пустой пароль — не попытка угадать, счётчик не трогаем.
     if (!password) return fail('wrong-password')
-    if (!(await verifyPassword(password, hash))) {
-      this.failedAttempts++
-      if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
-        this.failedAttempts = 0
-        this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
-      }
-      return fail('wrong-password')
+    // Попытку засчитываем ДО медленной проверки scrypt: иначе пачка параллельных запросов
+    // по IPC успела бы пройти мимо блокировки, пока первые ещё проверяются.
+    this.failedAttempts++
+    if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
+      this.failedAttempts = 0
+      this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
     }
+    if (!(await verifyPassword(password, hash))) return fail('wrong-password')
+    // Верный пароль: снимаем счётчик и блокировку, которую могла поставить эта же попытка.
     this.failedAttempts = 0
+    this.lockedUntil = 0
     return null
   }
 }

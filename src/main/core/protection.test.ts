@@ -249,6 +249,15 @@ describe('Ограничение попыток пароля (риск R-02)', (
     expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
   })
 
+  it('параллельный перебор: из 20 одновременных попыток проверяются только 5', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => service.requestUnlock(`guess-${i}`))
+    )
+    const errors = results.map((r) => (r.ok ? 'ok' : r.error))
+    expect(errors.filter((e) => e === 'wrong-password')).toHaveLength(MAX_FAILED_PASSWORD_ATTEMPTS)
+    expect(errors.filter((e) => e === 'too-many-attempts')).toHaveLength(15)
+  })
+
   it('запрос без пароля не считается попыткой угадать', async () => {
     for (let i = 0; i < 10; i++) await service.setMatchLimit(5)
     expect(await service.setMatchLimit(5, 'secret')).toMatchObject({ ok: true, applied: 'pending' })
