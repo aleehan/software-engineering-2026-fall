@@ -44,3 +44,41 @@ describe('PROBE R-01: wall-clock jump skips the 10-minute delay', () => {
     expect(getSettings(handle.db).matchLimit).toBe(10)
   })
 })
+
+// ── Probes added while verifying the AI review (C4, C5) ──
+import { sql } from 'drizzle-orm'
+import { Enforcer } from '../../src/main/core/enforcer'
+
+describe('PROBE C4: FACEIT key copied into pending_changes', () => {
+  it('a requested account change stores the API key in plain text', async () => {
+    await service.setFaceitAccount({ nickname: 'a', playerId: 'p1', apiKey: 'test-key-1' })
+    await service.setFaceitAccount({ nickname: 'b', playerId: 'p2', apiKey: 'test-key-2' }, '1234')
+    const rows = handle.db.all<{ text_value: string }>(sql`SELECT text_value FROM pending_changes`)
+    expect(rows[0].text_value).toContain('test-key-2')
+    expect(getSettings(handle.db).faceitApiKey).toBe('test-key-1')
+  })
+})
+
+describe('PROBE C5: enforcer when tasklist fails', () => {
+  it('a failing isRunning() is only reported to onError, cs2 is never killed', async () => {
+    const errors: unknown[] = []
+    let killed = 0
+    const enforcer = new Enforcer({
+      processes: {
+        isRunning: async () => {
+          throw new Error('tasklist not found')
+        },
+        kill: async () => {
+          killed++
+        }
+      },
+      getRules: () => ({ status: 'blocked' }) as never,
+      isInMatch: () => false,
+      getMatchKey: () => null,
+      onError: (e) => errors.push(e)
+    })
+    for (let i = 0; i < 3; i++) await enforcer.tick()
+    expect(killed).toBe(0)
+    expect(errors).toHaveLength(3)
+  })
+})

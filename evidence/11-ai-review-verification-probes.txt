@@ -1,0 +1,19 @@
+$ npm test -- --reporter=verbose --dir evidence/probes
+
+> gamekeeper@1.1.0 test
+> node scripts/vitest-electron.mjs --reporter=verbose --dir evidence/probes
+
+
+ RUN  v5.1.1 <repo>
+
+ ✓ evidence/probes/risk-probes.test.ts > PROBE R-02: password guessing > 30 wrong guesses in a row are all evaluated, the 31st (correct) one is accepted 2907ms
+ ✓ evidence/probes/risk-probes.test.ts > PROBE R-01: wall-clock jump skips the 10-minute delay > moving the system clock forward 10 minutes applies a pending raise immediately 189ms
+ ✓ evidence/probes/risk-probes.test.ts > PROBE C4: FACEIT key copied into pending_changes > a requested account change stores the API key in plain text 189ms
+ ✓ evidence/probes/risk-probes.test.ts > PROBE C5: enforcer when tasklist fails > a failing isRunning() is only reported to onError, cs2 is never killed 115ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  17:20:36
+   Duration  4.11s (tests 86%, import 12%, transform 2%)
+
+EXIT=0

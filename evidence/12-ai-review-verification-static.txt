@@ -1,0 +1,121 @@
+$ npm install --dry-run --ignore-scripts (does npm install drift from the lockfile?)
+
+188 packages are looking for funding
+  run `npm fund` for details
+$ npm ls electron better-sqlite3 drizzle-orm
+gamekeeper@1.1.0 <repo>
++-- @electron-toolkit/utils@4.0.0
+| `-- electron@44.11.5 deduped
++-- better-sqlite3@13.2.0
++-- drizzle-orm@0.45.4
+| `-- better-sqlite3@13.2.0 deduped
+`-- electron@44.11.5
+
+$ grep -n GAMEKEEPER_PROFILE README.md CLAUDE.md package.json
+CLAUDE.md:122:`GAMEKEEPER_PROFILE=test npm run dev` (в cmd: `set GAMEKEEPER_PROFILE=test&& npm run dev`) — отдельная папка данных `%APPDATA%\gamekeeper-test` (своя база и single-instance lock), GSI на порту 47816, конфиг CS2 не трогается, cs2.exe не закрывается. Без этого dev-запуск конфликтует с установленным Gamekeeper (общая база, замок, порт и токен в cfg). Установленный экземпляр не закрывать — это защита пользователя.
+$ grep -n "will-navigate" -r src/main
+(none)
+
+$ npm install --dry-run --ignore-scripts | grep -E "^(add|change|remove)"  (lockfile drift check)
+add lightningcss-win32-x64-msvc 1.33.0
+add lightningcss-win32-arm64-msvc 1.33.0
+add lightningcss-linux-arm64-musl 1.33.0
+add lightningcss-linux-arm64-gnu 1.33.0
+add lightningcss-linux-arm-gnueabihf 1.33.0
+add lightningcss-freebsd-x64 1.33.0
+add lightningcss-darwin-x64 1.33.0
+add lightningcss-darwin-arm64 1.33.0
+add lightningcss-android-arm64 1.33.0
+add fsevents 2.3.3
+add @tybys/wasm-util 0.10.5
+add @rolldown/binding-win32-x64-msvc 1.2.19
+add @rolldown/binding-win32-arm64-msvc 1.2.19
+add @rolldown/binding-wasm32-wasi 1.2.19
+add @rolldown/binding-openharmony-arm64 1.2.19
+add @rolldown/binding-linux-s390x-gnu 1.2.19
+add @rolldown/binding-linux-ppc64-gnu 1.2.19
+add @rolldown/binding-linux-arm64-musl 1.2.19
+add @rolldown/binding-linux-arm64-gnu 1.2.19
+add @rolldown/binding-linux-arm-gnueabihf 1.2.19
+add @rolldown/binding-freebsd-x64 1.2.19
+add @rolldown/binding-darwin-x64 1.2.19
+add @rolldown/binding-darwin-arm64 1.2.19
+add @rolldown/binding-android-arm64 1.2.19
+add @rolldown/binding-android-arm-eabi 1.2.19
+add @napi-rs/wasm-runtime 1.2.6
+add @esbuild/win32-x64 0.28.2
+add @esbuild/win32-ia32 0.28.2
+add @esbuild/win32-arm64 0.28.2
+add @esbuild/sunos-x64 0.28.2
+add @esbuild/openharmony-arm64 0.28.2
+add @esbuild/openbsd-x64 0.28.2
+add @esbuild/openbsd-arm64 0.28.2
+add @esbuild/netbsd-x64 0.28.2
+add @esbuild/netbsd-arm64 0.28.2
+add @esbuild/linux-s390x 0.28.2
+add @esbuild/linux-riscv64 0.28.2
+add @esbuild/linux-ppc64 0.28.2
+add @esbuild/linux-mips64el 0.28.2
+add @esbuild/linux-loong64 0.28.2
+add @esbuild/linux-ia32 0.28.2
+add @esbuild/linux-arm64 0.28.2
+add @esbuild/linux-arm 0.28.2
+add @esbuild/freebsd-x64 0.28.2
+add @esbuild/freebsd-arm64 0.28.2
+add @esbuild/darwin-x64 0.28.2
+add @esbuild/darwin-arm64 0.28.2
+add @esbuild/android-x64 0.28.2
+add @esbuild/android-arm64 0.28.2
+add @esbuild/android-arm 0.28.2
+add @esbuild/aix-ppc64 0.28.2
+add @emnapi/wasi-threads 2.2.0
+add @emnapi/runtime 2.0.0-beta.2
+add @emnapi/core 2.0.0-beta.2
+add @esbuild/win32-x64 0.18.20
+add @esbuild/win32-ia32 0.18.20
+add @esbuild/win32-arm64 0.18.20
+add @esbuild/sunos-x64 0.18.20
+add @esbuild/openbsd-x64 0.18.20
+add @esbuild/netbsd-x64 0.18.20
+add @esbuild/linux-s390x 0.18.20
+add @esbuild/linux-riscv64 0.18.20
+add @esbuild/linux-ppc64 0.18.20
+add @esbuild/linux-mips64el 0.18.20
+add @esbuild/linux-loong64 0.18.20
+add @esbuild/linux-ia32 0.18.20
+add @esbuild/linux-arm64 0.18.20
+add @esbuild/linux-arm 0.18.20
+add @esbuild/freebsd-x64 0.18.20
+add @esbuild/freebsd-arm64 0.18.20
+add @esbuild/darwin-x64 0.18.20
+add @esbuild/darwin-arm64 0.18.20
+add @esbuild/android-x64 0.18.20
+add @esbuild/android-arm64 0.18.20
+add @esbuild/android-arm 0.18.20
+add @esbuild/win32-x64 0.25.12
+add @esbuild/win32-ia32 0.25.12
+add @esbuild/win32-arm64 0.25.12
+add @esbuild/sunos-x64 0.25.12
+add @esbuild/openharmony-arm64 0.25.12
+add @esbuild/openbsd-x64 0.25.12
+add @esbuild/openbsd-arm64 0.25.12
+add @esbuild/netbsd-x64 0.25.12
+add @esbuild/netbsd-arm64 0.25.12
+add @esbuild/linux-s390x 0.25.12
+add @esbuild/linux-riscv64 0.25.12
+add @esbuild/linux-ppc64 0.25.12
+add @esbuild/linux-mips64el 0.25.12
+add @esbuild/linux-loong64 0.25.12
+add @esbuild/linux-ia32 0.25.12
+add @esbuild/linux-arm64 0.25.12
+add @esbuild/linux-arm 0.25.12
+add @esbuild/freebsd-x64 0.25.12
+add @esbuild/freebsd-arm64 0.25.12
+add @esbuild/darwin-x64 0.25.12
+add @esbuild/darwin-arm64 0.25.12
+add @esbuild/android-x64 0.25.12
+add @esbuild/android-arm64 0.25.12
+add @esbuild/android-arm 0.25.12
+add @esbuild/aix-ppc64 0.25.12
+added 100 packages in 660ms
+(only optional platform binaries are listed as "add"; 0 "change" lines → installed versions stay as locked)
