@@ -1,0 +1,120 @@
+$ npm test -- --reporter=verbose
+
+> gamekeeper@1.1.0 test
+> node scripts/vitest-electron.mjs --reporter=verbose
+
+
+ RUN  v5.1.1 <repo>
+
+ ✓ src/main/core/protection.test.ts > ProtectionService > пароль: хранится только хеш, повторная установка запрещена 114ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > уменьшение лимита — сразу и без пароля 97ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > увеличение лимита — без пароля отказ, с неверным отказ 199ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > увеличение лимита применяется только через 10 минут 202ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > отмена ожидающего изменения — без пароля 183ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > ужесточение лимита отменяет ожидающее повышение 168ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > повторный запрос заменяет предыдущий и перезапускает отсчёт 254ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > снятие блокировки действует до ближайших 05:00 171ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > выход: применяется через 10 минут, при старте старые запросы отменяются 240ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > задержка закрытия: больше — по паролю, меньше — сразу 164ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > недопустимые значения отклоняются 82ms
+ ✓ src/main/core/protection.test.ts > ProtectionService > смена пароля требует текущий пароль 498ms
+ ✓ src/main/core/protection.test.ts > FACEIT-аккаунт > первое подключение — сразу и без пароля 85ms
+ ✓ src/main/core/protection.test.ts > FACEIT-аккаунт > смена аккаунта — по паролю и через 10 минут 173ms
+ ✓ src/main/core/protection.test.ts > FACEIT-аккаунт > отключение — тоже ослабление 179ms
+ ✓ src/main/core/protection.test.ts > Первая настройка > пароль и лимит выше стандартного применяются сразу 193ms
+ ✓ src/main/core/protection.test.ts > Первая настройка > недопустимый лимит при первой настройке — отказ, пароль не сохраняется 92ms
+ ✓ src/main/core/protection.test.ts > ProtectionService без пароля > ослабление невозможно, пока пароль не задан 104ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > после 5 неверных паролей подряд ввод блокируется, даже верный пароль не принимается 559ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > после окончания блокировки верный пароль снова работает 559ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > верный пароль сбрасывает счётчик неверных попыток 902ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > параллельный перебор: из 20 одновременных попыток проверяются только 5 312ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > запрос без пароля не считается попыткой угадать 176ms
+ ✓ src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > ужесточение во время блокировки ввода работает без пароля 514ms
+ ✓ src/main/core/protection.test.ts > Перевод системных часов (риск R-01) > перевод часов на 10 минут вперёд не применяет ослабление раньше времени 159ms
+ ✓ src/main/core/protection.test.ts > Перевод системных часов (риск R-01) > перезапуск + перевод часов: изменение из прошлого запуска ждёт полную задержку заново 154ms
+ ✓ src/main/core/protection.test.ts > Перевод системных часов (риск R-01) > без перевода часов поведение прежнее: ровно через 10 минут 188ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > новый FACEIT-матч без GSI-пары записывается и засчитывается 16ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > FACEIT-матч, уже засчитанный GSI (та же карта, ±10 мин), не дублируется 6ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > GSI-катка на другой карте не склеивается с FACEIT-матчем 6ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > повторная синхронизация ничего не дублирует и не ходит за статистикой снова 6ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > без статистики матч всё равно засчитывается (карта неизвестна) 5ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > неверный ключ — ошибка в статусе, база не меняется 4ms
+ ✓ src/main/core/faceit/sync.test.ts > FaceitSync > без подключённого аккаунта ничего не делает 4ms
+ ✓ src/main/core/faceit/client.test.ts > FaceitClient > шлёт ключ в заголовке Authorization: Bearer 24ms
+ ✓ src/main/core/faceit/client.test.ts > FaceitClient > 400 invalid_token — неверный ключ (так FACEIT отвечает на самом деле) 1ms
+ ✓ src/main/core/faceit/client.test.ts > FaceitClient > коды ответа превращаются в понятные ошибки 1ms
+ ✓ src/main/core/faceit/client.test.ts > FaceitClient > история запрашивается для cs2 с лимитом 0ms
+ ✓ src/main/core/games/cs2/steam-locator.test.ts > findCs2Install > находит CS2 во второй библиотеке по libraryfolders.vdf и appmanifest 8ms
+ ✓ src/main/core/games/cs2/steam-locator.test.ts > findCs2Install > возвращает null, если CS2 нигде нет 2ms
+ ✓ src/main/core/games/cs2/gsi-config.test.ts > installGsiConfig > создаёт, не трогает без изменений и обновляет при смене токена 6ms
+ ✓ src/main/core/games/cs2/gsi-config.test.ts > installGsiConfig > пишет валидный VDF с uri, токеном и нужными блоками данных 3ms
+ ✓ src/main/core/faceit/parse.test.ts > parsePlayer > достаёт player_id, ник и SteamID из games.cs2 2ms
+ ✓ src/main/core/faceit/parse.test.ts > parsePlayer > null для ответа без player_id 0ms
+ ✓ src/main/core/faceit/parse.test.ts > parseHistoryItem > поражение 10:13: счёт со стороны игрока, время из секунд в Date 0ms
+ ✓ src/main/core/faceit/parse.test.ts > parseHistoryItem > та же игра глазами соперника — победа 13:10 1ms
+ ✓ src/main/core/faceit/parse.test.ts > parseHistoryItem > незавершённый матч и чужой матч отбрасываются 0ms
+ ✓ src/main/core/faceit/parse.test.ts > parseHistoryItem > parseHistory пропускает мусор в items 1ms
+ ✓ src/main/core/faceit/parse.test.ts > parseMatchStats > карта из round_stats.Map, K/D игрока из строк в числа 0ms
+ ✓ src/main/core/faceit/parse.test.ts > parseMatchStats > пустая статистика — все поля null 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > засчитывает катку на переходе live → gameover 2ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает повторный gameover (heartbeat) 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает, если приложение запустилось уже на экране gameover 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > засчитывает, даже если в момент gameover игрок наблюдает за тиммейтом 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает просмотр чужого матча (игрок ни разу не был собой) 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает, если игрок был без команды (наблюдатель) 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает режим casual 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает режим deathmatch 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает режим gungameprogressive 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > не засчитывает режим custom 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > засчитывает режим competitive 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > засчитывает режим premier 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > засчитывает режим scrimcomp2v2 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > выход в меню сбрасывает матч 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > смена карты начинает новый матч 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > две катки подряд — две записи 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > новый матч на той же карте после gameover засчитывается отдельно 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > currentMatchKey: null в меню, одинаковый в пределах матча 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > playerTeam — сторона игрока после смены сторон, а не в начале матча 0ms
+ ✓ src/main/core/match-counter.test.ts > MatchCounter > isInMatch: true в warmup/live/intermission, false в gameover и меню 0ms
+ ✓ src/main/core/games/cs2/vdf.test.ts > parseVdf > разбирает libraryfolders.vdf с экранированными путями 2ms
+ ✓ src/main/core/games/cs2/vdf.test.ts > parseVdf > пропускает комментарии и экранированные кавычки 0ms
+ ✓ src/main/core/games/cs2/vdf.test.ts > parseVdf > бросает ошибку на незакрытой скобке 1ms
+ ✓ src/main/core/game-day.test.ts > getGameDayStart > днём — сегодня в 05:00 2ms
+ ✓ src/main/core/game-day.test.ts > getGameDayStart > ночью до 05:00 — вчера в 05:00 0ms
+ ✓ src/main/core/game-day.test.ts > getGameDayStart > ровно в 05:00 — уже новый день 0ms
+ ✓ src/main/core/game-day.test.ts > getGameDayStart > переход через границу года 0ms
+ ✓ src/main/core/game-day.test.ts > getNextReset > днём — завтра в 05:00 0ms
+ ✓ src/main/core/game-day.test.ts > getNextReset > ночью — сегодня в 05:00 0ms
+ ✓ src/main/core/rules-engine.test.ts > evaluateRules > allowed, пока каток меньше лимита 2ms
+ ✓ src/main/core/rules-engine.test.ts > evaluateRules > blocked сразу после последней катки при задержке 0 0ms
+ ✓ src/main/core/rules-engine.test.ts > evaluateRules > grace до истечения задержки, потом blocked 0ms
+ ✓ src/main/core/rules-engine.test.ts > evaluateRules > снятая блокировка разрешает играть сверх лимита до unlockedUntil 0ms
+ ✓ src/main/core/rules-engine.test.ts > evaluateRules > задержка считается от катки, исчерпавшей лимит, а не от последней 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > разбирает типичное сообщение CS2 2ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > сообщение из главного меню — без map 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > возвращает null для null 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > возвращает null для 42 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > возвращает null для "str" 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > возвращает null для 1 0ms
+ ✓ src/main/core/games/cs2/gsi-payload.test.ts > parseGsiPayload > игнорирует поля неверного типа 0ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > ничего не трогает, пока игра разрешена 2ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > закрывает CS2 на экране итогов, когда лимит исчерпан 1ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > закрывает CS2 при запуске во время блокировки 0ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > в grace закрывает, если начался новый матч 0ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > даёт доиграть матч, шедший в момент ужесточения лимита, и закрывает после 0ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > защита не распространяется на следующий матч 0ms
+ ✓ src/main/core/enforcer.test.ts > Enforcer > при старте приложения во время блокировки матч не защищён 0ms
+ ✓ src/main/core/match-result.test.ts > ownScoreFromSides > игрок за CT: свой счёт — CT 2ms
+ ✓ src/main/core/match-result.test.ts > ownScoreFromSides > игрок за T: свой счёт — T 0ms
+ ✓ src/main/core/match-result.test.ts > ownScoreFromSides > сторона неизвестна — счёт и итог неизвестны 0ms
+ ✓ src/main/core/match-result.test.ts > resultFromScore > ничья 0ms
+
+ Test Files  13 passed (13)
+      Tests  102 passed (102)
+   Start at  17:26:53
+   Duration  9.40s (tests 87%, import 11%, transform 1%, worker 1%)
+
+    Isolate  13 workers spawned · ~111ms startup each (spawn + environment, per file)
+             at least ~1.33s faster with isolate: false — reuses workers across files instead of one per file
+
+EXIT=0

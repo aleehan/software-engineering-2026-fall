@@ -36,6 +36,13 @@ describe('PROBE R-02: password guessing', () => {
 
 describe('PROBE R-01: wall-clock jump skips the 10-minute delay', () => {
   it('moving the system clock forward 10 minutes applies a pending raise immediately', async () => {
+    // Real (monotonic) time is frozen; only the wall clock moves. On the baseline the
+    // `monotonicNow` option does not exist and is ignored.
+    service = new ProtectionService({
+      db: handle.db,
+      now: () => clock,
+      monotonicNow: () => 0
+    } as ConstructorParameters<typeof ProtectionService>[0])
     await service.setMatchLimit(10, '1234')
     expect(getSettings(handle.db).matchLimit).toBe(3)
     // Simulates the user changing Windows time; no real time has passed.

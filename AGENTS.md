@@ -14,19 +14,19 @@ protection is a product decision, not a refactoring.
 
 ## 2. Architecture (where things live)
 
-| Path | Role | Notes |
-|---|---|---|
-| `src/main/index.ts` | Electron entry point: bootstrap, timers, IPC registration, tray, single-instance lock | Not unit-tested (imports `electron`) |
-| `src/main/core/` | Business logic, **must not import `electron`** | All unit tests live here |
-| `src/main/core/rules-engine.ts`, `game-day.ts`, `today.ts` | Limit status (`allowed / grace / blocked`), 05:00 reset | Pure functions |
-| `src/main/core/enforcer.ts`, `process-controller.ts` | Closes `cs2.exe` via `tasklist`/`taskkill` behind the `ProcessController` interface | Never call the real controller in tests |
-| `src/main/core/protection.ts`, `password.ts` | Password (scrypt), delayed loosening queue (`pending_changes`) | Security-critical |
-| `src/main/core/match-counter.ts`, `gsi-server.ts`, `games/cs2/` | CS2 Game State Integration: HTTP server on 127.0.0.1, config installer, payload parser | |
-| `src/main/core/faceit/` | FACEIT Data API client and sync | Network code takes an injectable `fetch` |
-| `src/main/core/db/`, `drizzle/` | Drizzle ORM schema, repositories, SQL migrations | |
-| `src/main/ipc-*.ts`, `src/preload/`, `src/shared/` | IPC boundary; everything from the renderer is `unknown` and validated | |
-| `src/renderer/` | React UI (Home, Settings, History, Onboarding) | |
-| `scripts/` | Test runner wrapper, icon renderer, FACEIT probe | `faceit-probe.mjs` needs a real key — do not run |
+| Path                                                            | Role                                                                                   | Notes                                            |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `src/main/index.ts`                                             | Electron entry point: bootstrap, timers, IPC registration, tray, single-instance lock  | Not unit-tested (imports `electron`)             |
+| `src/main/core/`                                                | Business logic, **must not import `electron`**                                         | All unit tests live here                         |
+| `src/main/core/rules-engine.ts`, `game-day.ts`, `today.ts`      | Limit status (`allowed / grace / blocked`), 05:00 reset                                | Pure functions                                   |
+| `src/main/core/enforcer.ts`, `process-controller.ts`            | Closes `cs2.exe` via `tasklist`/`taskkill` behind the `ProcessController` interface    | Never call the real controller in tests          |
+| `src/main/core/protection.ts`, `password.ts`                    | Password (scrypt), delayed loosening queue (`pending_changes`)                         | Security-critical                                |
+| `src/main/core/match-counter.ts`, `gsi-server.ts`, `games/cs2/` | CS2 Game State Integration: HTTP server on 127.0.0.1, config installer, payload parser |                                                  |
+| `src/main/core/faceit/`                                         | FACEIT Data API client and sync                                                        | Network code takes an injectable `fetch`         |
+| `src/main/core/db/`, `drizzle/`                                 | Drizzle ORM schema, repositories, SQL migrations                                       |                                                  |
+| `src/main/ipc-*.ts`, `src/preload/`, `src/shared/`              | IPC boundary; everything from the renderer is `unknown` and validated                  |                                                  |
+| `src/renderer/`                                                 | React UI (Home, Settings, History, Onboarding)                                         |                                                  |
+| `scripts/`                                                      | Test runner wrapper, icon renderer, FACEIT probe                                       | `faceit-probe.mjs` needs a real key — do not run |
 
 ## 3. Setup
 
@@ -40,15 +40,15 @@ protection is a product decision, not a refactoring.
 
 ## 4. Safe commands (allowed without asking)
 
-| Command | What it does |
-|---|---|
-| `npm test` | Vitest inside Electron-as-Node, in-memory SQLite |
-| `npm test -- --reporter=verbose` / `npm test -- src/main/core/<file>.test.ts` | Same, verbose / single file |
-| `npm run typecheck` | `tsc --noEmit` for main and renderer |
-| `npm run lint` | ESLint |
-| `npx prettier --check .` | Formatting check (read-only) |
-| `npx electron-vite build` / `npm run build` | Compiles to `out/` (no installer, no registry changes) |
-| `npm audit`, `git status`, `git diff`, `git log` | Read-only inspection |
+| Command                                                                       | What it does                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `npm test`                                                                    | Vitest inside Electron-as-Node, in-memory SQLite       |
+| `npm test -- --reporter=verbose` / `npm test -- src/main/core/<file>.test.ts` | Same, verbose / single file                            |
+| `npm run typecheck`                                                           | `tsc --noEmit` for main and renderer                   |
+| `npm run lint`                                                                | ESLint                                                 |
+| `npx prettier --check .`                                                      | Formatting check (read-only)                           |
+| `npx electron-vite build` / `npm run build`                                   | Compiles to `out/` (no installer, no registry changes) |
+| `npm audit`, `git status`, `git diff`, `git log`                              | Read-only inspection                                   |
 
 ## 5. Commands that need explicit owner approval
 
