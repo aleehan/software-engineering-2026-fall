@@ -16,10 +16,48 @@ import {
   updateSettings,
   type Db,
   type PendingChange,
-  type PendingChangeKind
+  type PendingChangeKind,
+  type Settings
 } from './db'
 import { getNextReset } from './game-day'
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from './password'
+
+/**
+ * Стратегия для числовой настройки с правилом «меньше — сразу, больше — по паролю через задержку».
+ * Раньше это правило было скопировано в setMatchLimit и setCloseDelay, а запись значения —
+ * ещё раз в applyDue. Теперь каждая настройка описана одним объектом, а правило — одной функцией.
+ */
+interface NumericSettingPolicy {
+  /** Вид отложенного изменения для ослабления этой настройки. */
+  kind: 'raise_limit' | 'raise_close_delay'
+  min: number
+  max: number
+  read: (settings: Settings) => number
+  write: (db: Db, value: number) => void
+}
+
+// `satisfies` проверяет, что каждое значение — NumericSettingPolicy, но сохраняет точные ключи.
+const NUMERIC_POLICIES = {
+  matchLimit: {
+    kind: 'raise_limit',
+    min: MATCH_LIMIT_MIN,
+    max: MATCH_LIMIT_MAX,
+    read: (s) => s.matchLimit,
+    write: (db, value) => updateSettings(db, { matchLimit: value })
+  },
+  closeDelay: {
+    kind: 'raise_close_delay',
+    min: 0,
+    max: CLOSE_DELAY_MAX_SECONDS,
+    read: (s) => s.closeDelaySeconds,
+    write: (db, value) => updateSettings(db, { closeDelaySeconds: value })
+  }
+} satisfies Record<string, NumericSettingPolicy>
+
+/** Поиск стратегии по виду отложенного изменения (для applyDue). */
+const POLICY_BY_KIND: Partial<Record<PendingChangeKind, NumericSettingPolicy>> = Object.fromEntries(
+  Object.values(NUMERIC_POLICIES).map((policy) => [policy.kind, policy])
+)
 
 /** Аккаунт FACEIT, как он хранится в настройках. */
 export interface FaceitAccount {
@@ -92,36 +130,34 @@ export class ProtectionService {
   }
 
   /** Лимит каток: меньше — сразу, больше — по паролю через задержку. */
-  async setMatchLimit(value: number, password?: string): Promise<ActionResult> {
-    if (!Number.isInteger(value) || value < MATCH_LIMIT_MIN || value > MATCH_LIMIT_MAX) {
-      return fail('invalid-value')
-    }
-    const current = getSettings(this.db).matchLimit
-    if (value === current) return fail('unchanged')
-
-    if (value < current) {
-      updateSettings(this.db, { matchLimit: value })
-      // Передумал ослаблять — ожидающее повышение больше не нужно.
-      cancelPendingOfKind(this.db, 'raise_limit')
-      return { ok: true, applied: 'now' }
-    }
-    return this.requestLoosening('raise_limit', value, password)
+  setMatchLimit(value: number, password?: string): Promise<ActionResult> {
+    return this.setNumeric(NUMERIC_POLICIES.matchLimit, value, password)
   }
 
   /** Задержка закрытия (секунды): меньше — сразу, больше — по паролю через задержку. */
-  async setCloseDelay(seconds: number, password?: string): Promise<ActionResult> {
-    if (!Number.isInteger(seconds) || seconds < 0 || seconds > CLOSE_DELAY_MAX_SECONDS) {
+  setCloseDelay(seconds: number, password?: string): Promise<ActionResult> {
+    return this.setNumeric(NUMERIC_POLICIES.closeDelay, seconds, password)
+  }
+
+  /** Общее правило для числовых настроек (см. NumericSettingPolicy). */
+  private async setNumeric(
+    policy: NumericSettingPolicy,
+    value: number,
+    password?: string
+  ): Promise<ActionResult> {
+    if (!Number.isInteger(value) || value < policy.min || value > policy.max) {
       return fail('invalid-value')
     }
-    const current = getSettings(this.db).closeDelaySeconds
-    if (seconds === current) return fail('unchanged')
+    const current = policy.read(getSettings(this.db))
+    if (value === current) return fail('unchanged')
 
-    if (seconds < current) {
-      updateSettings(this.db, { closeDelaySeconds: seconds })
-      cancelPendingOfKind(this.db, 'raise_close_delay')
+    if (value < current) {
+      policy.write(this.db, value)
+      // Передумал ослаблять — ожидающее повышение того же вида больше не нужно.
+      cancelPendingOfKind(this.db, policy.kind)
       return { ok: true, applied: 'now' }
     }
-    return this.requestLoosening('raise_close_delay', seconds, password)
+    return this.requestLoosening(policy.kind, value, password)
   }
 
   requestUnlock(password?: string): Promise<ActionResult> {
@@ -178,12 +214,11 @@ export class ProtectionService {
 
     for (const change of due) {
       // switch по полю-литералу: TS проверяет, что каждый case — допустимый вид.
+      const policy = POLICY_BY_KIND[change.kind]
       switch (change.kind) {
         case 'raise_limit':
-          if (change.value !== null) updateSettings(this.db, { matchLimit: change.value })
-          break
         case 'raise_close_delay':
-          if (change.value !== null) updateSettings(this.db, { closeDelaySeconds: change.value })
+          if (policy && change.value !== null) policy.write(this.db, change.value)
           break
         case 'unlock':
           // Блокировка снята до ближайшего сброса в 05:00 — дальше обычные правила.
