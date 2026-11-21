@@ -1,0 +1,30 @@
+$ ls -a (CI / coverage / node version files)
+. .. .editorconfig .eslintcache .git .gitignore .prettierignore .prettierrc.yaml CLAUDE.md README.md build drizzle drizzle.config.ts electron-builder.yml electron.vite.config.ts eslint.config.mjs evidence node_modules out package-lock.json package.json resources scripts src tsconfig.json tsconfig.node.json tsconfig.web.json 
+ls: cannot access '.github': No such file or directory
+$ grep -n "engines" package.json
+(no engines field)
+$ grep -rn "console\.\(log\|error\)" src/main --include=*.ts | wc -l
+5
+$ grep -rn "electron-log\|winston\|pino\|appendFile" src || true
+(no file logger)
+$ grep -n "openExternal" -r src
+src/main/window.ts:57:    shell.openExternal(details.url)
+$ grep -n "attempt\|lockout\|throttl" -r src/main/core
+src/main/core/games/cs2/gsi-config.ts:23:  "throttle"  "0.5"
+$ grep -n "new Date()" -r src/main --include=*.ts | grep -v test
+src/main/index.ts:114:    const dayStart = getGameDayStart(new Date())
+src/main/core/match-counter.ts:54:  update(payload: GsiPayload, now: Date = new Date()): FinishedMatch | null {
+src/main/core/faceit/sync.ts:52:    this.now = options.now ?? (() => new Date())
+src/main/core/protection.ts:55:    this.now = options.now ?? (() => new Date())
+src/main/core/today.ts:6:export function evaluateToday(db: Db, now: Date = new Date()): RulesState {
+$ grep -n "faceitApiKey" src/main/core/db/schema.ts
+28:    faceitApiKey: text('faceit_api_key'),
+$ ls node_modules/@vitest
+mocker
+spy
+$ grep -c "\"\\^" package.json  (caret ranges)
+28
+$ grep -n "installConfig\|noopProcesses\|devProfile" src/main/index.ts
+67:const noopProcesses: ProcessController = {
+126:    ...(devProfile ? { port: 47816, installConfig: false } : {}),
+144:    processes: devProfile ? noopProcesses : new WindowsProcessController(),

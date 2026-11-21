@@ -1,0 +1,8 @@
+$ npm run lint
+
+> gamekeeper@1.1.0 lint
+> eslint --cache .
+
+(node:979) [SYNCKIT_GUARD_ORDERING] Warning: synckit: this Node rejected the worker environment, so the failure guard loads after inherited `NODE_OPTIONS` preloads; a failure in one of those cannot be reported. Set `SYNCKIT_TIMEOUT` to bound the wait.
+(Use `node --trace-warnings ...` to show where the warning was created)
+EXIT=0
