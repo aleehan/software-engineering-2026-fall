@@ -101,6 +101,12 @@ export class ProtectionService {
   private failedAttempts = 0
   /** До какого момента монотонных часов проверка пароля заблокирована. */
   private lockedUntil = 0
+  /**
+   * Когда (по монотонным часам) этот процесс впервые увидел каждое ожидающее изменение.
+   * Задержка должна пройти и по системным часам, и по монотонным: перевод часов Windows
+   * вперёд больше не применяет ослабление раньше времени (риск R-01).
+   */
+  private readonly firstSeenAt = new Map<number, number>()
 
   constructor(options: ProtectionOptions) {
     this.db = options.db
@@ -228,7 +234,7 @@ export class ProtectionService {
    */
   applyDue(): PendingChange[] {
     const now = this.now()
-    const due = listDueChanges(this.db, now)
+    const due = listDueChanges(this.db, now).filter((change) => this.monotonicDelayPassed(change))
 
     for (const change of due) {
       // switch по полю-литералу: TS проверяет, что каждый case — допустимый вид.
@@ -249,8 +255,25 @@ export class ProtectionService {
           break
       }
       setChangeStatus(this.db, change.id, 'applied')
+      this.firstSeenAt.delete(change.id)
     }
     return due
+  }
+
+  /**
+   * Прошла ли задержка по монотонным часам. Изменение, которое этот процесс видит впервые
+   * (например, запрошено до перезапуска приложения), начинает отсчёт заново — это строже,
+   * но не даёт обойти задержку перезапуском вместе с переводом часов.
+   */
+  private monotonicDelayPassed(change: PendingChange): boolean {
+    const nowMono = this.monotonicNow()
+    const seenAt = this.firstSeenAt.get(change.id)
+    if (seenAt === undefined) {
+      this.firstSeenAt.set(change.id, nowMono)
+      return false
+    }
+    const requiredMs = change.applyAfter.getTime() - change.requestedAt.getTime()
+    return nowMono - seenAt >= requiredMs
   }
 
   private async requestLoosening(
@@ -271,6 +294,7 @@ export class ProtectionService {
       requestedAt: this.now(),
       delayMs: this.delayMs
     })
+    this.firstSeenAt.set(change.id, this.monotonicNow())
     return { ok: true, applied: 'pending', applyAt: change.applyAfter.getTime() }
   }
 

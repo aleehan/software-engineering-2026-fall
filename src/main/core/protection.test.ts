@@ -268,3 +268,49 @@ describe('Ограничение попыток пароля (риск R-02)', (
     expect(await service.setMatchLimit(1)).toEqual({ ok: true, applied: 'now' })
   })
 })
+
+describe('Перевод системных часов (риск R-01)', () => {
+  // Отдельные часы: `wall` — системное время Windows (его можно перевести),
+  // `mono` — монотонные часы процесса (идут только вперёд и только реально).
+  let wall: Date
+  let mono: number
+  let guarded: ProtectionService
+  const make = (): ProtectionService =>
+    new ProtectionService({ db: handle.db, now: () => wall, monotonicNow: () => mono })
+
+  beforeEach(() => {
+    wall = new Date(2026, 10, 20, 18, 0)
+    mono = 1_000
+    guarded = make()
+  })
+
+  it('перевод часов на 10 минут вперёд не применяет ослабление раньше времени', async () => {
+    await guarded.setMatchLimit(10, 'secret')
+    wall = new Date(wall.getTime() + 10 * MINUTE) // перевели часы, реального времени не прошло
+    expect(guarded.applyDue()).toHaveLength(0)
+    expect(settings().matchLimit).toBe(3)
+
+    mono += 10 * MINUTE // а теперь реально прошло 10 минут
+    expect(guarded.applyDue().map((c) => c.kind)).toEqual(['raise_limit'])
+    expect(settings().matchLimit).toBe(10)
+  })
+
+  it('перезапуск + перевод часов: изменение из прошлого запуска ждёт полную задержку заново', async () => {
+    await guarded.setMatchLimit(10, 'secret')
+    wall = new Date(wall.getTime() + 60 * MINUTE)
+    const afterRestart = make() // новый процесс: монотонные часы ничего не знают о запросе
+    expect(afterRestart.applyDue()).toHaveLength(0)
+    mono += 9 * MINUTE
+    expect(afterRestart.applyDue()).toHaveLength(0)
+    mono += 1 * MINUTE
+    expect(afterRestart.applyDue()).toHaveLength(1)
+    expect(settings().matchLimit).toBe(10)
+  })
+
+  it('без перевода часов поведение прежнее: ровно через 10 минут', async () => {
+    await guarded.requestUnlock('secret')
+    wall = new Date(wall.getTime() + 10 * MINUTE)
+    mono += 10 * MINUTE
+    expect(guarded.applyDue().map((c) => c.kind)).toEqual(['unlock'])
+  })
+})
