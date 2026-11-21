@@ -1,19 +1,20 @@
 $ git log --oneline
-4ee2bf6 audit: evidence for install-app-deps failure, baseline prod audit, test run after M1; mark excerpts
-7c8e7c5 audit: npm ci evidence and rendered terminal screenshots
-9ba7fd9 audit: git history snapshot
-1893784 audit: final check outputs; probe R-01 models wall clock and monotonic clock separately
-878f205 docs(readme): Node version, npm ci, dev-profile warning, link to AGENTS.md (C10)
-a92cf6c audit: negative check for R-02 mitigation
-8fc118e audit: negative checks for both mitigations
-75e616e fix(protection): require the 10-minute delay on a monotonic clock too, so moving the Windows clock forward cannot skip it (R-01)
-de52e94 fix(protection): count password attempt before scrypt so parallel IPC guesses cannot bypass the lockout (review finding on R-02 fix)
-a7667d5 fix(protection): lock password input for 5 min after 5 wrong attempts (R-02)
-97bede7 refactor(protection): Strategy table for numeric settings (one tighten/loosen rule instead of three copies)
-3c332d9 audit: verify AI risk review findings; isolate audit probes from npm test (C9)
-7900873 docs: add AGENTS.md with safe/forbidden actions and review gates; import it from CLAUDE.md
-edb1ab8 audit: baseline check outputs and risk probes
-46190a3 baseline: Gamekeeper v1.1.0 source export (no secrets, no build output)
+759b5ed audit: refresh commit references after author rename
+35412f2 audit: evidence for install-app-deps failure, baseline prod audit, test run after M1; mark excerpts
+c794130 audit: npm ci evidence and rendered terminal screenshots
+2fea6f2 audit: git history snapshot
+a84b185 audit: final check outputs; probe R-01 models wall clock and monotonic clock separately
+77afb76 docs(readme): Node version, npm ci, dev-profile warning, link to AGENTS.md (C10)
+9d6d415 audit: negative check for R-02 mitigation
+3bafb7b audit: negative checks for both mitigations
+8739475 fix(protection): require the 10-minute delay on a monotonic clock too, so moving the Windows clock forward cannot skip it (R-01)
+1b77c5d fix(protection): count password attempt before scrypt so parallel IPC guesses cannot bypass the lockout (review finding on R-02 fix)
+7404bc6 fix(protection): lock password input for 5 min after 5 wrong attempts (R-02)
+391a86d refactor(protection): Strategy table for numeric settings (one tighten/loosen rule instead of three copies)
+3909b94 audit: verify AI risk review findings; isolate audit probes from npm test (C9)
+b220d50 docs: add AGENTS.md with safe/forbidden actions and review gates; import it from CLAUDE.md
+1fd2584 audit: baseline check outputs and risk probes
+c054b45 baseline: Gamekeeper v1.1.0 source export (no secrets, no build output)
 
 $ git diff --stat baseline..HEAD -- . ":(exclude)evidence"
  AGENTS.md                        | 100 ++++++++++++++++++++++++++
