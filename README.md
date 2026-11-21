@@ -13,12 +13,17 @@
 
 ## Разработка
 
+Нужны Node.js 22+ и npm 10+.
+
 ```bash
-npm install          # зависимости + пересборка better-sqlite3 под Electron
-npm run dev          # запуск в режиме разработки
+npm ci               # зависимости из package-lock.json + пересборка better-sqlite3 под Electron
+GAMEKEEPER_PROFILE=test npm run dev   # запуск в режиме разработки (изолированный профиль)
+npm run lint         # ESLint
 npm test             # тесты (Vitest внутри Electron)
 npm run typecheck    # проверка типов
 npm run build:win    # установщик в dist/
 ```
+
+> ⚠️ Не запускай `npm run dev` / `npm start` без `GAMEKEEPER_PROFILE=test`: такой запуск делит базу, порт GSI и замок с установленным Gamekeeper, переписывает конфиг CS2 и может закрыть `cs2.exe`. Правила для агентов — в [AGENTS.md](AGENTS.md).
 
 Стек: Electron, React, TypeScript (electron-vite), Drizzle ORM + SQLite (better-sqlite3), electron-builder. Архитектура и правила проекта — в [CLAUDE.md](CLAUDE.md).
