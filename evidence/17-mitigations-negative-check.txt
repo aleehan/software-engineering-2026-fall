@@ -5,3 +5,11 @@ $ (fix for R-01 temporarily reverted) npm test -- src/main/core/protection.test.
  FAIL  src/main/core/protection.test.ts > Перевод системных часов (риск R-01) > перевод часов на 10 минут вперёд не применяет ослабление раньше времени
  FAIL  src/main/core/protection.test.ts > Перевод системных часов (риск R-01) > перезапуск + перевод часов: изменение из прошлого запуска ждёт полную задержку заново
       Tests  2 failed | 25 passed (27)
+
+$ (lockout check line for R-02 temporarily removed) npm test -- src/main/core/protection.test.ts
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > после 5 неверных паролей подряд ввод блокируется, даже верный пароль не принимается
+ FAIL  src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > после окончания блокировки верный пароль снова работает
+    238|     for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await servi…
+ FAIL  src/main/core/protection.test.ts > Ограничение попыток пароля (риск R-02) > параллельный перебор: из 20 одновременных попыток проверяются только 5
+      Tests  3 failed | 24 passed (27)
