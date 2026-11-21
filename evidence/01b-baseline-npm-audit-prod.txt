@@ -1,0 +1,4 @@
+$ git diff --stat baseline -- package.json package-lock.json   (empty = dependencies identical to baseline)
+$ npm audit --omit=dev
+found 0 vulnerabilities
+EXIT=0
