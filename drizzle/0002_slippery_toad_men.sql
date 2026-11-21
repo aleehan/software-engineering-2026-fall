@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `unlocked_until` integer;

@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1795192919014,
+      "tag": "0000_jazzy_loa",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795194326271,
+      "tag": "0001_hard_night_thrasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795195100831,
+      "tag": "0002_slippery_toad_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795199689869,
+      "tag": "0003_gorgeous_captain_stacy",
+      "breakpoints": true
+    }
+  ]
+}
