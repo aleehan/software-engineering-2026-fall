@@ -1,0 +1,10 @@
+$ npx prettier --check .
+Checking formatting...
+[warn] CLAUDE.md
+[warn] drizzle/meta/_journal.json
+[warn] drizzle/meta/0000_snapshot.json
+[warn] drizzle/meta/0001_snapshot.json
+[warn] drizzle/meta/0002_snapshot.json
+[warn] drizzle/meta/0003_snapshot.json
+[warn] Code style issues found in 6 files. Run Prettier with --write to fix.
+EXIT=1

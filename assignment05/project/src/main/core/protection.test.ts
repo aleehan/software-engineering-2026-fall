@@ -1,0 +1,316 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { join } from 'path'
+import { getSettings, openDatabase, type DatabaseHandle } from './db'
+import { MAX_FAILED_PASSWORD_ATTEMPTS, PASSWORD_LOCKOUT_MS, ProtectionService } from './protection'
+
+// База в памяти (':memory:') с настоящими миграциями — быстро и без следов на диске.
+let handle: DatabaseHandle
+let clock: Date
+let service: ProtectionService
+const MINUTE = 60_000
+
+beforeEach(async () => {
+  handle = openDatabase({ filePath: ':memory:', migrationsFolder: join(process.cwd(), 'drizzle') })
+  clock = new Date(2026, 10, 20, 18, 0)
+  // Часы подменены: `now` возвращает переменную clock, которую тесты двигают вперёд.
+  service = new ProtectionService({ db: handle.db, now: () => clock })
+  await service.setInitialPassword('secret')
+})
+
+afterEach(() => handle.close())
+
+const advance = (ms: number): void => {
+  clock = new Date(clock.getTime() + ms)
+}
+const settings = (): ReturnType<typeof getSettings> => getSettings(handle.db)
+
+describe('ProtectionService', () => {
+  it('пароль: хранится только хеш, повторная установка запрещена', async () => {
+    expect(settings().passwordHash).toMatch(/^scrypt\$/)
+    expect(settings().passwordHash).not.toContain('secret')
+    expect(await service.setInitialPassword('other')).toEqual({
+      ok: false,
+      error: 'password-already-set'
+    })
+  })
+
+  it('уменьшение лимита — сразу и без пароля', async () => {
+    expect(await service.setMatchLimit(1)).toEqual({ ok: true, applied: 'now' })
+    expect(settings().matchLimit).toBe(1)
+  })
+
+  it('увеличение лимита — без пароля отказ, с неверным отказ', async () => {
+    expect(await service.setMatchLimit(5)).toEqual({ ok: false, error: 'wrong-password' })
+    expect(await service.setMatchLimit(5, 'nope')).toEqual({ ok: false, error: 'wrong-password' })
+    expect(settings().matchLimit).toBe(3)
+  })
+
+  it('увеличение лимита применяется только через 10 минут', async () => {
+    const result = await service.setMatchLimit(5, 'secret')
+    expect(result).toMatchObject({ ok: true, applied: 'pending' })
+    expect(settings().matchLimit).toBe(3)
+
+    advance(9 * MINUTE)
+    expect(service.applyDue()).toHaveLength(0)
+    expect(settings().matchLimit).toBe(3)
+
+    advance(1 * MINUTE)
+    expect(service.applyDue().map((c) => c.kind)).toEqual(['raise_limit'])
+    expect(settings().matchLimit).toBe(5)
+    expect(service.listPending()).toHaveLength(0)
+  })
+
+  it('отмена ожидающего изменения — без пароля', async () => {
+    await service.setMatchLimit(5, 'secret')
+    const [pending] = service.listPending()
+    service.cancel(pending.id)
+    advance(11 * MINUTE)
+    expect(service.applyDue()).toHaveLength(0)
+    expect(settings().matchLimit).toBe(3)
+  })
+
+  it('ужесточение лимита отменяет ожидающее повышение', async () => {
+    await service.setMatchLimit(5, 'secret')
+    await service.setMatchLimit(2)
+    advance(11 * MINUTE)
+    service.applyDue()
+    expect(settings().matchLimit).toBe(2)
+  })
+
+  it('повторный запрос заменяет предыдущий и перезапускает отсчёт', async () => {
+    await service.setMatchLimit(5, 'secret')
+    advance(8 * MINUTE)
+    await service.setMatchLimit(6, 'secret')
+    advance(3 * MINUTE)
+    expect(service.applyDue()).toHaveLength(0)
+    advance(7 * MINUTE)
+    service.applyDue()
+    expect(settings().matchLimit).toBe(6)
+  })
+
+  it('снятие блокировки действует до ближайших 05:00', async () => {
+    await service.requestUnlock('secret')
+    advance(10 * MINUTE)
+    service.applyDue()
+    expect(settings().unlockedUntil).toEqual(new Date(2026, 10, 21, 5, 0))
+  })
+
+  it('выход: применяется через 10 минут, при старте старые запросы отменяются', async () => {
+    await service.requestQuit('secret')
+    service.discardStaleQuitRequests()
+    advance(11 * MINUTE)
+    expect(service.applyDue()).toHaveLength(0)
+
+    await service.requestQuit('secret')
+    advance(10 * MINUTE)
+    expect(service.applyDue().map((c) => c.kind)).toEqual(['quit'])
+  })
+
+  it('задержка закрытия: больше — по паролю, меньше — сразу', async () => {
+    expect(await service.setCloseDelay(120)).toEqual({ ok: false, error: 'wrong-password' })
+    expect(await service.setCloseDelay(120, 'secret')).toMatchObject({ applied: 'pending' })
+    advance(10 * MINUTE)
+    service.applyDue()
+    expect(settings().closeDelaySeconds).toBe(120)
+    expect(await service.setCloseDelay(30)).toEqual({ ok: true, applied: 'now' })
+  })
+
+  it('недопустимые значения отклоняются', async () => {
+    expect(await service.setMatchLimit(0)).toEqual({ ok: false, error: 'invalid-value' })
+    expect(await service.setMatchLimit(11, 'secret')).toEqual({ ok: false, error: 'invalid-value' })
+    expect(await service.setMatchLimit(2.5)).toEqual({ ok: false, error: 'invalid-value' })
+    expect(await service.setMatchLimit(3)).toEqual({ ok: false, error: 'unchanged' })
+  })
+
+  it('смена пароля требует текущий пароль', async () => {
+    expect(await service.changePassword('wrong', 'newpass')).toEqual({
+      ok: false,
+      error: 'wrong-password'
+    })
+    expect(await service.changePassword('secret', 'newpass')).toEqual({ ok: true, applied: 'now' })
+    expect(await service.requestUnlock('secret')).toEqual({ ok: false, error: 'wrong-password' })
+    expect(await service.requestUnlock('newpass')).toMatchObject({ ok: true })
+  })
+})
+
+describe('FACEIT-аккаунт', () => {
+  const account = { nickname: '_aleehan', playerId: 'p1', apiKey: 'k1' }
+
+  it('первое подключение — сразу и без пароля', async () => {
+    expect(await service.setFaceitAccount(account)).toEqual({ ok: true, applied: 'now' })
+    expect(settings()).toMatchObject({ faceitNickname: '_aleehan', faceitPlayerId: 'p1' })
+  })
+
+  it('смена аккаунта — по паролю и через 10 минут', async () => {
+    await service.setFaceitAccount(account)
+    const other = { nickname: 'other', playerId: 'p2', apiKey: 'k2' }
+    expect(await service.setFaceitAccount(other)).toEqual({ ok: false, error: 'wrong-password' })
+    expect(await service.setFaceitAccount(other, 'secret')).toMatchObject({ applied: 'pending' })
+    expect(settings().faceitPlayerId).toBe('p1')
+
+    advance(10 * MINUTE)
+    expect(service.applyDue().map((c) => c.kind)).toEqual(['change_faceit'])
+    expect(settings()).toMatchObject({
+      faceitNickname: 'other',
+      faceitPlayerId: 'p2',
+      faceitApiKey: 'k2'
+    })
+  })
+
+  it('отключение — тоже ослабление', async () => {
+    await service.setFaceitAccount(account)
+    expect(await service.setFaceitAccount(null, 'secret')).toMatchObject({ applied: 'pending' })
+    advance(10 * MINUTE)
+    service.applyDue()
+    expect(settings()).toMatchObject({
+      faceitNickname: null,
+      faceitPlayerId: null,
+      faceitApiKey: null
+    })
+  })
+})
+
+describe('Первая настройка', () => {
+  it('пароль и лимит выше стандартного применяются сразу', async () => {
+    const fresh = openDatabase({
+      filePath: ':memory:',
+      migrationsFolder: join(process.cwd(), 'drizzle')
+    })
+    const setup = new ProtectionService({ db: fresh.db })
+    expect(await setup.setInitialPassword('secret', 7)).toEqual({ ok: true, applied: 'now' })
+    expect(getSettings(fresh.db).matchLimit).toBe(7)
+    expect(await setup.setInitialPassword('again', 9)).toEqual({
+      ok: false,
+      error: 'password-already-set'
+    })
+    expect(getSettings(fresh.db).matchLimit).toBe(7)
+    fresh.close()
+  })
+
+  it('недопустимый лимит при первой настройке — отказ, пароль не сохраняется', async () => {
+    const fresh = openDatabase({
+      filePath: ':memory:',
+      migrationsFolder: join(process.cwd(), 'drizzle')
+    })
+    const setup = new ProtectionService({ db: fresh.db })
+    expect(await setup.setInitialPassword('secret', 11)).toEqual({
+      ok: false,
+      error: 'invalid-value'
+    })
+    expect(setup.hasPassword()).toBe(false)
+    fresh.close()
+  })
+})
+
+describe('ProtectionService без пароля', () => {
+  it('ослабление невозможно, пока пароль не задан', async () => {
+    const fresh = openDatabase({
+      filePath: ':memory:',
+      migrationsFolder: join(process.cwd(), 'drizzle')
+    })
+    const noPassword = new ProtectionService({ db: fresh.db })
+    expect(await noPassword.requestQuit('x')).toEqual({ ok: false, error: 'password-not-set' })
+    expect(await noPassword.setInitialPassword('abc')).toEqual({
+      ok: false,
+      error: 'password-too-short'
+    })
+    fresh.close()
+  })
+})
+
+describe('Ограничение попыток пароля (риск R-02)', () => {
+  it('после 5 неверных паролей подряд ввод блокируется, даже верный пароль не принимается', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) {
+      expect(await service.requestUnlock('nope')).toEqual({ ok: false, error: 'wrong-password' })
+    }
+    expect(await service.requestUnlock('secret')).toEqual({
+      ok: false,
+      error: 'too-many-attempts'
+    })
+    expect(await service.setMatchLimit(5, 'secret')).toEqual({
+      ok: false,
+      error: 'too-many-attempts'
+    })
+    expect(service.listPending()).toHaveLength(0)
+  })
+
+  it('после окончания блокировки верный пароль снова работает', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
+    advance(PASSWORD_LOCKOUT_MS - 1)
+    expect(await service.requestUnlock('secret')).toMatchObject({ error: 'too-many-attempts' })
+    advance(1)
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true, applied: 'pending' })
+  })
+
+  it('верный пароль сбрасывает счётчик неверных попыток', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
+    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
+  })
+
+  it('параллельный перебор: из 20 одновременных попыток проверяются только 5', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => service.requestUnlock(`guess-${i}`))
+    )
+    const errors = results.map((r) => (r.ok ? 'ok' : r.error))
+    expect(errors.filter((e) => e === 'wrong-password')).toHaveLength(MAX_FAILED_PASSWORD_ATTEMPTS)
+    expect(errors.filter((e) => e === 'too-many-attempts')).toHaveLength(15)
+  })
+
+  it('запрос без пароля не считается попыткой угадать', async () => {
+    for (let i = 0; i < 10; i++) await service.setMatchLimit(5)
+    expect(await service.setMatchLimit(5, 'secret')).toMatchObject({ ok: true, applied: 'pending' })
+  })
+
+  it('ужесточение во время блокировки ввода работает без пароля', async () => {
+    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
+    expect(await service.setMatchLimit(1)).toEqual({ ok: true, applied: 'now' })
+  })
+})
+
+describe('Перевод системных часов (риск R-01)', () => {
+  // Отдельные часы: `wall` — системное время Windows (его можно перевести),
+  // `mono` — монотонные часы процесса (идут только вперёд и только реально).
+  let wall: Date
+  let mono: number
+  let guarded: ProtectionService
+  const make = (): ProtectionService =>
+    new ProtectionService({ db: handle.db, now: () => wall, monotonicNow: () => mono })
+
+  beforeEach(() => {
+    wall = new Date(2026, 10, 20, 18, 0)
+    mono = 1_000
+    guarded = make()
+  })
+
+  it('перевод часов на 10 минут вперёд не применяет ослабление раньше времени', async () => {
+    await guarded.setMatchLimit(10, 'secret')
+    wall = new Date(wall.getTime() + 10 * MINUTE) // перевели часы, реального времени не прошло
+    expect(guarded.applyDue()).toHaveLength(0)
+    expect(settings().matchLimit).toBe(3)
+
+    mono += 10 * MINUTE // а теперь реально прошло 10 минут
+    expect(guarded.applyDue().map((c) => c.kind)).toEqual(['raise_limit'])
+    expect(settings().matchLimit).toBe(10)
+  })
+
+  it('перезапуск + перевод часов: изменение из прошлого запуска ждёт полную задержку заново', async () => {
+    await guarded.setMatchLimit(10, 'secret')
+    wall = new Date(wall.getTime() + 60 * MINUTE)
+    const afterRestart = make() // новый процесс: монотонные часы ничего не знают о запросе
+    expect(afterRestart.applyDue()).toHaveLength(0)
+    mono += 9 * MINUTE
+    expect(afterRestart.applyDue()).toHaveLength(0)
+    mono += 1 * MINUTE
+    expect(afterRestart.applyDue()).toHaveLength(1)
+    expect(settings().matchLimit).toBe(10)
+  })
+
+  it('без перевода часов поведение прежнее: ровно через 10 минут', async () => {
+    await guarded.requestUnlock('secret')
+    wall = new Date(wall.getTime() + 10 * MINUTE)
+    mono += 10 * MINUTE
+    expect(guarded.applyDue().map((c) => c.kind)).toEqual(['unlock'])
+  })
+})

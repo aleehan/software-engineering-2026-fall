@@ -1,0 +1,198 @@
+diff --git a/src/main/core/protection.test.ts b/src/main/core/protection.test.ts
+index 76af715..c55b82d 100644
+--- a/src/main/core/protection.test.ts
++++ b/src/main/core/protection.test.ts
+@@ -1,7 +1,7 @@
+ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+ import { join } from 'path'
+ import { getSettings, openDatabase, type DatabaseHandle } from './db'
+-import { ProtectionService } from './protection'
++import { MAX_FAILED_PASSWORD_ATTEMPTS, PASSWORD_LOCKOUT_MS, ProtectionService } from './protection'
+ 
+ // База в памяти (':memory:') с настоящими миграциями — быстро и без следов на диске.
+ let handle: DatabaseHandle
+@@ -217,3 +217,45 @@ describe('ProtectionService без пароля', () => {
+     fresh.close()
+   })
+ })
++
++describe('Ограничение попыток пароля (риск R-02)', () => {
++  it('после 5 неверных паролей подряд ввод блокируется, даже верный пароль не принимается', async () => {
++    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) {
++      expect(await service.requestUnlock('nope')).toEqual({ ok: false, error: 'wrong-password' })
++    }
++    expect(await service.requestUnlock('secret')).toEqual({
++      ok: false,
++      error: 'too-many-attempts'
++    })
++    expect(await service.setMatchLimit(5, 'secret')).toEqual({
++      ok: false,
++      error: 'too-many-attempts'
++    })
++    expect(service.listPending()).toHaveLength(0)
++  })
++
++  it('после окончания блокировки верный пароль снова работает', async () => {
++    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
++    advance(PASSWORD_LOCKOUT_MS - 1)
++    expect(await service.requestUnlock('secret')).toMatchObject({ error: 'too-many-attempts' })
++    advance(1)
++    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true, applied: 'pending' })
++  })
++
++  it('верный пароль сбрасывает счётчик неверных попыток', async () => {
++    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
++    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
++    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS - 1; i++) await service.requestUnlock('nope')
++    expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
++  })
++
++  it('запрос без пароля не считается попыткой угадать', async () => {
++    for (let i = 0; i < 10; i++) await service.setMatchLimit(5)
++    expect(await service.setMatchLimit(5, 'secret')).toMatchObject({ ok: true, applied: 'pending' })
++  })
++
++  it('ужесточение во время блокировки ввода работает без пароля', async () => {
++    for (let i = 0; i < MAX_FAILED_PASSWORD_ATTEMPTS; i++) await service.requestUnlock('nope')
++    expect(await service.setMatchLimit(1)).toEqual({ ok: true, applied: 'now' })
++  })
++})
+diff --git a/src/main/core/protection.ts b/src/main/core/protection.ts
+index 271783f..8f77249 100644
+--- a/src/main/core/protection.ts
++++ b/src/main/core/protection.ts
+@@ -71,8 +71,18 @@ export interface ProtectionOptions {
+   delayMs?: number
+   /** Источник времени. В тестах подменяем, чтобы «перематывать» часы. */
+   now?: () => Date
++  /**
++   * Монотонные часы в миллисекундах (не зависят от системного времени Windows).
++   * По умолчанию performance.now(); если в тестах подменён только `now`, берём время из него.
++   */
++  monotonicNow?: () => number
+ }
+ 
++/** Сколько неверных паролей подряд допускается до временной блокировки ввода. */
++export const MAX_FAILED_PASSWORD_ATTEMPTS = 5
++/** На сколько блокируется проверка пароля после серии неверных попыток. */
++export const PASSWORD_LOCKOUT_MS = 5 * 60 * 1000
++
+ // Маленький помощник: короче писать return fail('wrong-password').
+ const fail = (error: ProtectionError): ActionResult => ({ ok: false, error })
+ 
+@@ -86,11 +96,19 @@ export class ProtectionService {
+   private readonly db: Db
+   private readonly delayMs: number
+   private readonly now: () => Date
++  private readonly monotonicNow: () => number
++  /** Неверных паролей подряд (сбрасывается верным паролем). Хранится в памяти процесса. */
++  private failedAttempts = 0
++  /** До какого момента монотонных часов проверка пароля заблокирована. */
++  private lockedUntil = 0
+ 
+   constructor(options: ProtectionOptions) {
+     this.db = options.db
+     this.delayMs = options.delayMs ?? LOOSENING_DELAY_MS
+-    this.now = options.now ?? (() => new Date())
++    const now = options.now ?? (() => new Date())
++    this.now = now
++    this.monotonicNow =
++      options.monotonicNow ?? (options.now ? () => now().getTime() : () => performance.now())
+   }
+ 
+   hasPassword(): boolean {
+@@ -260,7 +278,19 @@ export class ProtectionService {
+   private async checkPassword(password: string | undefined): Promise<ActionResult | null> {
+     const hash = getSettings(this.db).passwordHash
+     if (hash === null) return fail('password-not-set')
+-    if (!password || !(await verifyPassword(password, hash))) return fail('wrong-password')
++    // Пока действует блокировка, пароль даже не проверяем — перебор не продвигается.
++    if (this.monotonicNow() < this.lockedUntil) return fail('too-many-attempts')
++    // Пустой пароль — не попытка угадать, счётчик не трогаем.
++    if (!password) return fail('wrong-password')
++    if (!(await verifyPassword(password, hash))) {
++      this.failedAttempts++
++      if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
++        this.failedAttempts = 0
++        this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
++      }
++      return fail('wrong-password')
++    }
++    this.failedAttempts = 0
+     return null
+   }
+ }
+diff --git a/src/renderer/src/lib/labels.ts b/src/renderer/src/lib/labels.ts
+index 0f10ea3..00c5f33 100644
+--- a/src/renderer/src/lib/labels.ts
++++ b/src/renderer/src/lib/labels.ts
+@@ -14,6 +14,7 @@ export const ERROR_TEXT: Record<ProtectionError, string> = {
+   'password-not-set': 'Сначала задай пароль',
+   'password-already-set': 'Пароль уже задан',
+   'wrong-password': 'Неверный пароль',
++  'too-many-attempts': 'Слишком много неверных попыток. Ввод пароля заблокирован на 5 минут',
+   'password-too-short': 'Пароль слишком короткий, нужно минимум 4 символа',
+   'invalid-value': 'Недопустимое значение',
+   unchanged: 'Значение не изменилось',
+diff --git a/src/shared/protection.ts b/src/shared/protection.ts
+index 63b995b..2c1a86c 100644
+--- a/src/shared/protection.ts
++++ b/src/shared/protection.ts
+@@ -11,6 +11,8 @@ export type ProtectionError =
+   | 'password-not-set'
+   | 'password-already-set'
+   | 'wrong-password'
++  // Слишком много неверных паролей подряд — ввод временно заблокирован.
++  | 'too-many-attempts'
+   | 'password-too-short'
+   | 'invalid-value'
+   | 'unchanged'
+diff --git a/src/main/core/protection.test.ts b/src/main/core/protection.test.ts
+index c55b82d..ebdc84a 100644
+--- a/src/main/core/protection.test.ts
++++ b/src/main/core/protection.test.ts
+@@ -249,6 +249,15 @@ describe('Ограничение попыток пароля (риск R-02)', (
+     expect(await service.requestUnlock('secret')).toMatchObject({ ok: true })
+   })
+ 
++  it('параллельный перебор: из 20 одновременных попыток проверяются только 5', async () => {
++    const results = await Promise.all(
++      Array.from({ length: 20 }, (_, i) => service.requestUnlock(`guess-${i}`))
++    )
++    const errors = results.map((r) => (r.ok ? 'ok' : r.error))
++    expect(errors.filter((e) => e === 'wrong-password')).toHaveLength(MAX_FAILED_PASSWORD_ATTEMPTS)
++    expect(errors.filter((e) => e === 'too-many-attempts')).toHaveLength(15)
++  })
++
+   it('запрос без пароля не считается попыткой угадать', async () => {
+     for (let i = 0; i < 10; i++) await service.setMatchLimit(5)
+     expect(await service.setMatchLimit(5, 'secret')).toMatchObject({ ok: true, applied: 'pending' })
+diff --git a/src/main/core/protection.ts b/src/main/core/protection.ts
+index 8f77249..ed123b9 100644
+--- a/src/main/core/protection.ts
++++ b/src/main/core/protection.ts
+@@ -282,15 +282,17 @@ export class ProtectionService {
+     if (this.monotonicNow() < this.lockedUntil) return fail('too-many-attempts')
+     // Пустой пароль — не попытка угадать, счётчик не трогаем.
+     if (!password) return fail('wrong-password')
+-    if (!(await verifyPassword(password, hash))) {
+-      this.failedAttempts++
+-      if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
+-        this.failedAttempts = 0
+-        this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
+-      }
+-      return fail('wrong-password')
++    // Попытку засчитываем ДО медленной проверки scrypt: иначе пачка параллельных запросов
++    // по IPC успела бы пройти мимо блокировки, пока первые ещё проверяются.
++    this.failedAttempts++
++    if (this.failedAttempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
++      this.failedAttempts = 0
++      this.lockedUntil = this.monotonicNow() + PASSWORD_LOCKOUT_MS
+     }
++    if (!(await verifyPassword(password, hash))) return fail('wrong-password')
++    // Верный пароль: снимаем счётчик и блокировку, которую могла поставить эта же попытка.
+     this.failedAttempts = 0
++    this.lockedUntil = 0
+     return null
+   }
+ }

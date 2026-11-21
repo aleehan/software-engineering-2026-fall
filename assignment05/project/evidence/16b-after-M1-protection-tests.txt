@@ -1,0 +1,4 @@
+$ (worktree at 1b77c5d, after M1) npm test -- src/main/core/protection.test.ts
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+EXIT=0

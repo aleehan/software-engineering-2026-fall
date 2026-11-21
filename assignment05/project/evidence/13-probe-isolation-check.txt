@@ -1,0 +1,10 @@
+$ npm test   (C9 check: are probe files picked up by default?)
+ Test Files  13 passed (13)
+      Tests  93 passed (93)
+$ npm test -- --config evidence/probes/vitest.probes.config.ts
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+
+$ (before isolation) probe saved as *.test.ts, then: npm test
+ Test Files  14 passed (14)
+      Tests  97 passed (97)

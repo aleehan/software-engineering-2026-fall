@@ -1,0 +1,9 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+
+# Локальный ключ FACEIT API для scripts/faceit-probe.mjs
+.faceit-key

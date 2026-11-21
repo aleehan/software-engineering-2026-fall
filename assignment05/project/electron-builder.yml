@@ -1,0 +1,37 @@
+appId: com.gamekeeper.app
+productName: Gamekeeper
+directories:
+  buildResources: build
+  output: dist
+# Что НЕ кладём в приложение: исходники, конфиги разработки, скрипты, документацию.
+files:
+  - '!**/.vscode/*'
+  - '!**/.idea/*'
+  - '!src/*'
+  - '!scripts/*'
+  - '!drizzle/*'
+  - '!{electron.vite.config.{js,ts,mjs,cjs},drizzle.config.ts}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,.editorconfig,CHANGELOG.md,README.md,CLAUDE.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+# SQL-миграции лежат рядом с приложением: resources/drizzle (см. src/main/paths.ts).
+extraResources:
+  - from: drizzle
+    to: drizzle
+# Папка resources (иконки) не пакуется в asar — Tray и Notification читают файлы с диска.
+asarUnpack:
+  - resources/**
+win:
+  executableName: Gamekeeper
+  target: nsis
+  # Иконку .ico electron-builder соберёт из build/icon.png (512×512).
+nsis:
+  artifactName: Gamekeeper-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+  # Установка для текущего пользователя, без прав администратора.
+  perMachine: false
+  include: build/installer.nsh
+# better-sqlite3 уже пересобран под Electron в postinstall (electron-builder install-app-deps).
+npmRebuild: false

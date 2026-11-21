@@ -1,0 +1,18 @@
+$ npm test
+
+> gamekeeper@1.1.0 test
+> node scripts/vitest-electron.mjs
+
+
+ RUN  v5.1.1 <repo>
+
+
+ Test Files  13 passed (13)
+      Tests  93 passed (93)
+   Start at  17:15:53
+   Duration  6.38s (tests 72%, import 21%, transform 6%, worker 1%)
+
+    Isolate  13 workers spawned · ~124ms startup each (spawn + environment, per file)
+             at least ~1.49s faster with isolate: false — reuses workers across files instead of one per file
+
+EXIT=0

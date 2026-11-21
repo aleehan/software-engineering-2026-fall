@@ -1,0 +1,11 @@
+$ npm test
+ Test Files  13 passed (13)
+      Tests  93 passed (93)
+$ npm run typecheck
+EXIT=0
+$ npm run lint
+
+
+EXIT=0
+$ npx prettier --check src
+All matched files use Prettier code style!

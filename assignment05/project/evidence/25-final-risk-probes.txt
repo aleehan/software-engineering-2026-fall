@@ -1,0 +1,67 @@
+$ (final version) npm test -- --reporter=verbose --config evidence/probes/vitest.probes.config.ts
+
+> gamekeeper@1.1.0 test
+> node scripts/vitest-electron.mjs --reporter=verbose --config evidence/probes/vitest.probes.config.ts
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (evidence/probes/vitest.probes.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.1 <repo>
+
+ × evidence/probes/risk-probes.probe.ts > PROBE R-02: password guessing > 30 wrong guesses in a row are all evaluated, the 31st (correct) one is accepted 491ms
+   → expected Set{ 'wrong-password', …(1) } to deeply equal Set{ 'wrong-password' }
+ × evidence/probes/risk-probes.probe.ts > PROBE R-01: wall-clock jump skips the 10-minute delay > moving the system clock forward 10 minutes applies a pending raise immediately 166ms
+   → expected 3 to be 10 // Object.is equality
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE C4: FACEIT key copied into pending_changes > a requested account change stores the API key in plain text 168ms
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE C5: enforcer when tasklist fails > a failing isRunning() is only reported to onError, cs2 is never killed 94ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  evidence/probes/risk-probes.probe.ts > PROBE R-02: password guessing > 30 wrong guesses in a row are all evaluated, the 31st (correct) one is accepted
+AssertionError: expected Set{ 'wrong-password', …(1) } to deeply equal Set{ 'wrong-password' }
+
+- Expected
++ Received
+
+  Set {
++   "too-many-attempts",
+    "wrong-password",
+  }
+
+ ❯ evidence/probes/risk-probes.probe.ts:31:30
+     29|     }
+     30|     // Every guess is answered with 'wrong-password' — there is no loc…
+     31|     expect(new Set(results)).toEqual(new Set(['wrong-password']))
+       |                              ^
+     32|     const last = await service.requestUnlock('1234')
+     33|     expect(last.ok).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  evidence/probes/risk-probes.probe.ts > PROBE R-01: wall-clock jump skips the 10-minute delay > moving the system clock forward 10 minutes applies a pending raise immediately
+AssertionError: expected 3 to be 10 // Object.is equality
+
+- Expected
++ Received
+
+- 10
++ 3
+
+ ❯ evidence/probes/risk-probes.probe.ts:51:47
+     49|     clock = new Date(clock.getTime() + 10 * MINUTE)
+     50|     service.applyDue()
+     51|     expect(getSettings(handle.db).matchLimit).toBe(10)
+       |                                               ^
+     52|   })
+     53| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  17:26:44
+   Duration  1.53s (tests 66%, import 29%, transform 4%)
+
+EXIT=1

@@ -1,0 +1,5 @@
+$ npx electron-builder install-app-deps
+DOMException [Error]: Request was cancelled.
+  cause: RequestAbortedError [AbortError]: Proxy response (403) !== 200 when HTTP Tunneling
+  ⨯ node-gyp failed to rebuild '<repo>/node_modules/better-sqlite3'  failedTask=installAppDeps stackTrace=Error: node-gyp failed to rebuild '<repo>/node_modules/better-sqlite3'
+EXIT=1

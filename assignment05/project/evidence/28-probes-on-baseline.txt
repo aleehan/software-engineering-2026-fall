@@ -1,0 +1,22 @@
+$ (worktree at tag baseline, same probe file) npm test -- --reporter=verbose --config evidence/probes/vitest.probes.config.ts
+
+> gamekeeper@1.1.0 test
+> node scripts/vitest-electron.mjs --reporter=verbose --config evidence/probes/vitest.probes.config.ts
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (evidence/probes/vitest.probes.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.1 <baseline-worktree>
+
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE R-02: password guessing > 30 wrong guesses in a row are all evaluated, the 31st (correct) one is accepted 2660ms
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE R-01: wall-clock jump skips the 10-minute delay > moving the system clock forward 10 minutes applies a pending raise immediately 167ms
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE C4: FACEIT key copied into pending_changes > a requested account change stores the API key in plain text 166ms
+ ✓ evidence/probes/risk-probes.probe.ts > PROBE C5: enforcer when tasklist fails > a failing isRunning() is only reported to onError, cs2 is never killed 88ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  17:26:40
+   Duration  3.72s (tests 86%, import 10%, transform 3%)
+
+EXIT=0
